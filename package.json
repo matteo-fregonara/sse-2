@@ -1,7 +1,7 @@
 {
-  "name": "inline-chat-logger",
-  "displayName": "Inline Chat Logger",
-  "description": "Logs VS Code inline chat suggestions to a file automatically",
+  "name": "github-copilot-energy-consumption",
+  "displayName": "GitHub Copilot Energy Consumption",
+  "description": "Reports the energy consumption of GitHub Copilot",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.80.0"

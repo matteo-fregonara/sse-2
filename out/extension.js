@@ -5,42 +5,42 @@ exports.deactivate = deactivate;
 const vscode = require("vscode");
 const fs = require("fs");
 const path = require("path");
-const Diff = require("diff");
 const tiktoken_1 = require("tiktoken");
 let totalEnergyUsed = 0;
+let recentEnergyUsed = 0;
 let energyBarItem;
-// Global buffers for capturing a full suggestion session.
-let previousText = ''; // The last known full document text.
-let suggestionBufferBase = null; // Document state before the suggestion started.
-let suggestionBufferFinal = null; // Most recent document state during the suggestion.
+let previousText = '';
+let suggestionBufferBase = null;
+let suggestionBufferFinal = null;
 let suggestionBufferTimer = null;
-// Adjust debounce time (in ms) as needed.
-const suggestionDebounceTime = 4000;
+const suggestionDebounceTime = 2000;
+const MIN_TOKEN_THRESHOLD = 3;
+const JOULES_PER_TOKEN = 2.16;
 function activate(context) {
-    const logFilePath = path.join(context.globalStoragePath, 'vscode_inline_chat_log.txt');
+    const logFilePath = path.join(context.globalStoragePath, 'energy_consumption_log.txt');
     if (!fs.existsSync(context.globalStoragePath)) {
         fs.mkdirSync(context.globalStoragePath, { recursive: true });
     }
     let loggingEnabled = true;
-    console.log(`Inline chat logger extension is now active. Logging to: ${logFilePath}`);
-    const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    statusBarItem.text = '$(record) Logging Chat';
-    statusBarItem.tooltip = 'Toggle inline chat logging';
-    statusBarItem.command = 'inlineChatLogger.toggle';
+    console.log(`GitHub Copilot Energy Consumption extension is now active. Logging to: ${logFilePath}`);
+    const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
+    statusBarItem.text = '$(record) Tracking GitHub Copilot Energy Consumption';
+    statusBarItem.tooltip = 'Toggle GitHub Copilot energy consumption logging';
+    statusBarItem.command = 'githubCopilotEnergy.toggle';
     statusBarItem.show();
-    energyBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
-    energyBarItem.text = `Energy used: ${totalEnergyUsed}`;
-    energyBarItem.tooltip = 'Total energy used by the model';
+    energyBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
+    energyBarItem.text = `Last edit: ~${recentEnergyUsed.toFixed(2)} J`;
+    energyBarItem.tooltip = `Total energy used: ~${totalEnergyUsed.toFixed(2)} J`;
     energyBarItem.show();
     context.subscriptions.push(statusBarItem);
     context.subscriptions.push(energyBarItem);
-    const toggleCommand = vscode.commands.registerCommand('inlineChatLogger.toggle', () => {
+    const toggleCommand = vscode.commands.registerCommand('githubCopilotEnergy.toggle', () => {
         loggingEnabled = !loggingEnabled;
-        statusBarItem.text = loggingEnabled ? '$(record) Logging Chat' : '$(circle-slash) Chat Log Off';
-        vscode.window.showInformationMessage(`Inline chat logging ${loggingEnabled ? 'enabled' : 'disabled'}`);
+        statusBarItem.text = loggingEnabled ? '$(record) Logging Energy' : '$(circle-slash) Energy Log Off';
+        vscode.window.showInformationMessage(`GitHub Copilot energy consumption logging ${loggingEnabled ? 'enabled' : 'disabled'}`);
     });
     context.subscriptions.push(toggleCommand);
-    const testCommand = vscode.commands.registerCommand('inlineChatLogger.test', async () => {
+    const testCommand = vscode.commands.registerCommand('githubCopilotEnergy.test', async () => {
         try {
             await fs.promises.appendFile(logFilePath, `Test log entry at ${new Date().toISOString()}\n`);
             vscode.window.showInformationMessage(`Successfully wrote to log file at: ${logFilePath}`);
@@ -50,7 +50,6 @@ function activate(context) {
         }
     });
     context.subscriptions.push(testCommand);
-    // Initialize previousText with the active document's content.
     if (vscode.window.activeTextEditor) {
         previousText = vscode.window.activeTextEditor.document.getText();
     }
@@ -59,7 +58,6 @@ function activate(context) {
             previousText = editor.document.getText();
         }
     });
-    // Listen for text document changes.
     const textChangeListener = vscode.workspace.onDidChangeTextDocument(event => {
         if (!loggingEnabled)
             return;
@@ -67,18 +65,18 @@ function activate(context) {
         if (!editor || editor.document !== event.document)
             return;
         const currentText = event.document.getText();
-        // Heuristic: if any change spans multiple lines, or adds non-trivial text.
-        const isSuggestionChange = event.contentChanges.some(change => change.text.split('\n').length > 1 ||
-            (change.range.start.line !== change.range.end.line) ||
-            (change.text.trim().length > 0 && change.text.length > 3));
-        if (isSuggestionChange) {
-            // Capture the document's pre-suggestion state if not already captured.
+        // Quick check for significant changes before buffering
+        const hasSignificantChange = event.contentChanges.some(change => {
+            const addedText = change.text;
+            return (addedText.split('\n').length > 1 ||
+                (change.range.start.line !== change.range.end.line) ||
+                addedText.trim().length >= MIN_TOKEN_THRESHOLD);
+        });
+        if (hasSignificantChange) {
             if (suggestionBufferBase === null) {
                 suggestionBufferBase = previousText;
             }
-            // Update the final state of the suggestion.
             suggestionBufferFinal = currentText;
-            // Reset the debounce timer on each change.
             if (suggestionBufferTimer) {
                 clearTimeout(suggestionBufferTimer);
             }
@@ -86,65 +84,51 @@ function activate(context) {
                 flushSuggestionBuffer(logFilePath, event.document);
             }, suggestionDebounceTime);
         }
-        // Update previousText to reflect the current document state.
         previousText = currentText;
     });
     context.subscriptions.push(textChangeListener);
-    // // Listen for the inline suggestion commit command.
-    // vscode.commands.onDidExecuteCommand(e => {
-    //   if (e.command === 'editor.action.inlineSuggest.commit') {
-    //     if (suggestionBufferTimer) {
-    //       clearTimeout(suggestionBufferTimer);
-    //       suggestionBufferTimer = null;
-    //     }
-    //     // Flush the suggestion buffer immediately when the suggestion is accepted.
-    //     flushSuggestionBuffer(logFilePath, vscode.window.activeTextEditor?.document);
-    //   }
-    // });
-    const chatLoggerCommand = vscode.commands.registerCommand('inlineChatLogger.start', () => {
+    const energyLoggerCommand = vscode.commands.registerCommand('githubCopilotEnergy.start', () => {
         if (loggingEnabled) {
-            fs.promises.appendFile(logFilePath, `\n--- Inline chat started (${new Date().toISOString()}) ---\n` +
-                '-'.repeat(40) + '\n').catch(error => console.error('Error logging chat start:', error));
+            fs.promises.appendFile(logFilePath, `\n--- GitHub Copilot energy tracking started (${new Date().toISOString()}) ---\n` +
+                '-'.repeat(40) + '\n').catch(error => console.error('Error logging energy start:', error));
         }
         return undefined;
     });
-    context.subscriptions.push(chatLoggerCommand);
+    context.subscriptions.push(energyLoggerCommand);
 }
 function flushSuggestionBuffer(logFilePath, document) {
-    if (!document) {
+    if (!document || suggestionBufferBase === null || suggestionBufferFinal === null) {
         return;
     }
-    if (suggestionBufferBase !== null && suggestionBufferFinal !== null) {
-        // Compute a character-level diff between pre-suggestion and final state.
-        const diff = Diff.diffChars(suggestionBufferBase, suggestionBufferFinal);
-        const insertedText = diff.filter(part => part.added).map(part => part.value).join('');
-        const tokenCount = countTokens(insertedText);
-        const energyUsed = estimateEnergyUsage(tokenCount);
-        totalEnergyUsed += energyUsed;
-        energyBarItem.text = `Energy used: ${totalEnergyUsed}`;
-        console.log(`Energy used for this suggestion: ${energyUsed} J`);
+    // Instead of using diff, just compare the added text directly
+    const insertedText = suggestionBufferFinal.slice(suggestionBufferBase.length);
+    const tokenCount = countTokens(insertedText);
+    if (tokenCount >= MIN_TOKEN_THRESHOLD) {
+        const energyUsed = Number((tokenCount * JOULES_PER_TOKEN).toFixed(2));
+        totalEnergyUsed = Number((totalEnergyUsed + energyUsed).toFixed(2));
+        recentEnergyUsed = energyUsed;
+        energyBarItem.text = `Last edit: ~${recentEnergyUsed.toFixed(2)} J`;
+        energyBarItem.tooltip = `Total energy used: ~${totalEnergyUsed.toFixed(2)} J`;
+        console.log(`Energy used for this suggestion: ~${energyUsed} J (Token count: ${tokenCount})`);
         if (insertedText.trim().length > 0) {
             const timestamp = new Date().toISOString();
             const fileName = path.basename(document.fileName);
-            fs.appendFileSync(logFilePath, `\n--- Suggestion accepted (${timestamp}) ---\n` +
+            fs.appendFileSync(logFilePath, `\n--- GitHub Copilot Edit (${timestamp}) ---\n` +
                 `File: ${fileName}\n` +
                 `Suggestion:\n${insertedText}\n` +
+                `Token Count: ${tokenCount}\n` +
+                `Energy Consumption: ${energyUsed} J\n` +
                 '-'.repeat(40) + '\n');
         }
     }
-    // Reset buffers for the next suggestion.
     suggestionBufferBase = null;
     suggestionBufferFinal = null;
 }
 function deactivate() {
-    console.log('Inline chat logger deactivated!');
+    console.log('GitHub Copilot energy consumption deactivated!');
 }
 function countTokens(text) {
-    const enc = (0, tiktoken_1.encoding_for_model)("gpt-3.5-turbo");
+    const enc = (0, tiktoken_1.encoding_for_model)("gpt-4o");
     return enc.encode(text).length;
-}
-function estimateEnergyUsage(tokenCount) {
-    const JOULES_PER_TOKEN = 3;
-    return tokenCount * JOULES_PER_TOKEN;
 }
 //# sourceMappingURL=extension.js.map
