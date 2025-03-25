@@ -6,6 +6,9 @@ const vscode = require("vscode");
 const fs = require("fs");
 const path = require("path");
 const Diff = require("diff");
+const tiktoken_1 = require("tiktoken");
+let totalEnergyUsed = 0;
+let energyBarItem;
 // Global buffers for capturing a full suggestion session.
 let previousText = ''; // The last known full document text.
 let suggestionBufferBase = null; // Document state before the suggestion started.
@@ -25,7 +28,12 @@ function activate(context) {
     statusBarItem.tooltip = 'Toggle inline chat logging';
     statusBarItem.command = 'inlineChatLogger.toggle';
     statusBarItem.show();
+    energyBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
+    energyBarItem.text = `Energy used: ${totalEnergyUsed}`;
+    energyBarItem.tooltip = 'Total energy used by the model';
+    energyBarItem.show();
     context.subscriptions.push(statusBarItem);
+    context.subscriptions.push(energyBarItem);
     const toggleCommand = vscode.commands.registerCommand('inlineChatLogger.toggle', () => {
         loggingEnabled = !loggingEnabled;
         statusBarItem.text = loggingEnabled ? '$(record) Logging Chat' : '$(circle-slash) Chat Log Off';
@@ -109,18 +117,18 @@ function flushSuggestionBuffer(logFilePath, document) {
     if (suggestionBufferBase !== null && suggestionBufferFinal !== null) {
         // Compute a character-level diff between pre-suggestion and final state.
         const diff = Diff.diffChars(suggestionBufferBase, suggestionBufferFinal);
-        let suggestionText = '';
-        diff.forEach(part => {
-            if (part.added) {
-                suggestionText += part.value;
-            }
-        });
-        if (suggestionText.trim().length > 0) {
+        const insertedText = diff.filter(part => part.added).map(part => part.value).join('');
+        const tokenCount = countTokens(insertedText);
+        const energyUsed = estimateEnergyUsage(tokenCount);
+        totalEnergyUsed += energyUsed;
+        energyBarItem.text = `Energy used: ${totalEnergyUsed}`;
+        console.log(`Energy used for this suggestion: ${energyUsed} J`);
+        if (insertedText.trim().length > 0) {
             const timestamp = new Date().toISOString();
             const fileName = path.basename(document.fileName);
             fs.appendFileSync(logFilePath, `\n--- Suggestion accepted (${timestamp}) ---\n` +
                 `File: ${fileName}\n` +
-                `Suggestion:\n${suggestionText}\n` +
+                `Suggestion:\n${insertedText}\n` +
                 '-'.repeat(40) + '\n');
         }
     }
@@ -130,5 +138,13 @@ function flushSuggestionBuffer(logFilePath, document) {
 }
 function deactivate() {
     console.log('Inline chat logger deactivated!');
+}
+function countTokens(text) {
+    const enc = (0, tiktoken_1.encoding_for_model)("gpt-3.5-turbo");
+    return enc.encode(text).length;
+}
+function estimateEnergyUsage(tokenCount) {
+    const JOULES_PER_TOKEN = 3;
+    return tokenCount * JOULES_PER_TOKEN;
 }
 //# sourceMappingURL=extension.js.map
