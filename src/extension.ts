@@ -32,8 +32,8 @@ export function activate(context: vscode.ExtensionContext) {
   statusBarItem.show();
 
   energyBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
-  energyBarItem.text = `Last edit: ~${recentEnergyUsed.toFixed(2)} J`;
-  energyBarItem.tooltip = `Total energy used: ~${totalEnergyUsed.toFixed(2)} J`;
+  energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;  // Changed to show total
+  energyBarItem.tooltip = `Last edit: ~${recentEnergyUsed.toFixed(2)} J`;  // Changed to show last edit
   energyBarItem.show();
 
   context.subscriptions.push(statusBarItem);
@@ -72,7 +72,6 @@ export function activate(context: vscode.ExtensionContext) {
 
     const currentText = event.document.getText();
     
-    // Quick check for significant changes before buffering
     const hasSignificantChange = event.contentChanges.some(change => {
       const addedText = change.text;
       return (addedText.split('\n').length > 1 ||
@@ -115,7 +114,6 @@ function flushSuggestionBuffer(logFilePath: string, document?: vscode.TextDocume
     return;
   }
 
-  // Instead of using diff, just compare the added text directly
   const insertedText = suggestionBufferFinal.slice(suggestionBufferBase.length);
   const tokenCount = countTokens(insertedText);
 
@@ -124,8 +122,8 @@ function flushSuggestionBuffer(logFilePath: string, document?: vscode.TextDocume
     totalEnergyUsed = Number((totalEnergyUsed + energyUsed).toFixed(2));
     recentEnergyUsed = energyUsed;
     
-    energyBarItem.text = `Last edit: ~${recentEnergyUsed.toFixed(2)} J`;
-    energyBarItem.tooltip = `Total energy used: ~${totalEnergyUsed.toFixed(2)} J`;
+    energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;  // Changed to show total
+    energyBarItem.tooltip = `Last edit: ~${recentEnergyUsed.toFixed(2)} J`;  // Changed to show last edit
     console.log(`Energy used for this suggestion: ~${energyUsed} J (Token count: ${tokenCount})`);
 
     if (insertedText.trim().length > 0) {

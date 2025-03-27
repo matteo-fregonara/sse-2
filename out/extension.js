@@ -29,8 +29,8 @@ function activate(context) {
     statusBarItem.command = 'githubCopilotEnergy.toggle';
     statusBarItem.show();
     energyBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
-    energyBarItem.text = `Last edit: ~${recentEnergyUsed.toFixed(2)} J`;
-    energyBarItem.tooltip = `Total energy used: ~${totalEnergyUsed.toFixed(2)} J`;
+    energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`; // Changed to show total
+    energyBarItem.tooltip = `Last edit: ~${recentEnergyUsed.toFixed(2)} J`; // Changed to show last edit
     energyBarItem.show();
     context.subscriptions.push(statusBarItem);
     context.subscriptions.push(energyBarItem);
@@ -65,7 +65,6 @@ function activate(context) {
         if (!editor || editor.document !== event.document)
             return;
         const currentText = event.document.getText();
-        // Quick check for significant changes before buffering
         const hasSignificantChange = event.contentChanges.some(change => {
             const addedText = change.text;
             return (addedText.split('\n').length > 1 ||
@@ -100,15 +99,14 @@ function flushSuggestionBuffer(logFilePath, document) {
     if (!document || suggestionBufferBase === null || suggestionBufferFinal === null) {
         return;
     }
-    // Instead of using diff, just compare the added text directly
     const insertedText = suggestionBufferFinal.slice(suggestionBufferBase.length);
     const tokenCount = countTokens(insertedText);
     if (tokenCount >= MIN_TOKEN_THRESHOLD) {
         const energyUsed = Number((tokenCount * JOULES_PER_TOKEN).toFixed(2));
         totalEnergyUsed = Number((totalEnergyUsed + energyUsed).toFixed(2));
         recentEnergyUsed = energyUsed;
-        energyBarItem.text = `Last edit: ~${recentEnergyUsed.toFixed(2)} J`;
-        energyBarItem.tooltip = `Total energy used: ~${totalEnergyUsed.toFixed(2)} J`;
+        energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`; // Changed to show total
+        energyBarItem.tooltip = `Last edit: ~${recentEnergyUsed.toFixed(2)} J`; // Changed to show last edit
         console.log(`Energy used for this suggestion: ~${energyUsed} J (Token count: ${tokenCount})`);
         if (insertedText.trim().length > 0) {
             const timestamp = new Date().toISOString();
