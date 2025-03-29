@@ -8,6 +8,7 @@ const path = require("path");
 const tiktoken_1 = require("tiktoken");
 let totalEnergyUsed = 0;
 let recentEnergyUsed = 0;
+let totalCO2Emissions = 0;
 let energyBarItem;
 let previousText = '';
 let suggestionBufferBase = null;
@@ -29,8 +30,8 @@ function activate(context) {
     statusBarItem.command = 'githubCopilotEnergy.toggle';
     statusBarItem.show();
     energyBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
-    energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`; // Changed to show total
-    energyBarItem.tooltip = `Last edit: ~${recentEnergyUsed.toFixed(2)} J`; // Changed to show last edit
+    energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;
+    energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂ emissions: ~${totalCO2Emissions.toFixed(3)} g of CO₂`;
     energyBarItem.show();
     context.subscriptions.push(statusBarItem);
     context.subscriptions.push(energyBarItem);
@@ -102,12 +103,12 @@ function flushSuggestionBuffer(logFilePath, document) {
     const insertedText = suggestionBufferFinal.slice(suggestionBufferBase.length);
     const tokenCount = countTokens(insertedText);
     if (tokenCount >= MIN_TOKEN_THRESHOLD) {
-        const energyUsed = Number((tokenCount * JOULES_PER_TOKEN).toFixed(2));
-        totalEnergyUsed = Number((totalEnergyUsed + energyUsed).toFixed(2));
-        recentEnergyUsed = energyUsed;
-        energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`; // Changed to show total
-        energyBarItem.tooltip = `Last edit: ~${recentEnergyUsed.toFixed(2)} J`; // Changed to show last edit
-        console.log(`Energy used for this suggestion: ~${energyUsed} J (Token count: ${tokenCount})`);
+        const recentEnergyUsed = Number((tokenCount * JOULES_PER_TOKEN).toFixed(2));
+        totalEnergyUsed = Number((totalEnergyUsed + recentEnergyUsed).toFixed(2));
+        totalCO2Emissions = Number((totalEnergyUsed / 3600000 * 77).toFixed(3));
+        energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;
+        energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂ emissions: ~${totalCO2Emissions.toFixed(2)} g of CO₂`;
+        console.log(`Energy used for this suggestion: ~${recentEnergyUsed} J (Token count: ${tokenCount})`);
         if (insertedText.trim().length > 0) {
             const timestamp = new Date().toISOString();
             const fileName = path.basename(document.fileName);
@@ -115,7 +116,9 @@ function flushSuggestionBuffer(logFilePath, document) {
                 `File: ${fileName}\n` +
                 `Suggestion:\n${insertedText}\n` +
                 `Token Count: ${tokenCount}\n` +
-                `Energy Consumption: ${energyUsed} J\n` +
+                `Energy Consumption: ${recentEnergyUsed} J\n` +
+                `Total Energy Consumption: ${totalEnergyUsed} J\n` +
+                `Total CO₂ emissions: ${totalCO2Emissions} J\n` +
                 '-'.repeat(40) + '\n');
         }
     }

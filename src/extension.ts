@@ -5,6 +5,7 @@ import { encoding_for_model } from 'tiktoken';
 
 let totalEnergyUsed = 0;
 let recentEnergyUsed = 0;
+let totalCO2Emissions = 0;
 let energyBarItem: vscode.StatusBarItem;
 
 let previousText: string = '';
@@ -32,8 +33,8 @@ export function activate(context: vscode.ExtensionContext) {
   statusBarItem.show();
 
   energyBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
-  energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;  // Changed to show total
-  energyBarItem.tooltip = `Last edit: ~${recentEnergyUsed.toFixed(2)} J`;  // Changed to show last edit
+  energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;
+  energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂ emissions: ~${totalCO2Emissions.toFixed(2)} g of CO₂`;
   energyBarItem.show();
 
   context.subscriptions.push(statusBarItem);
@@ -118,13 +119,13 @@ function flushSuggestionBuffer(logFilePath: string, document?: vscode.TextDocume
   const tokenCount = countTokens(insertedText);
 
   if (tokenCount >= MIN_TOKEN_THRESHOLD) {
-    const energyUsed = Number((tokenCount * JOULES_PER_TOKEN).toFixed(2));
-    totalEnergyUsed = Number((totalEnergyUsed + energyUsed).toFixed(2));
-    recentEnergyUsed = energyUsed;
+    const recentEnergyUsed = Number((tokenCount * JOULES_PER_TOKEN).toFixed(2));
+    totalEnergyUsed = Number((totalEnergyUsed + recentEnergyUsed).toFixed(2));
+    totalCO2Emissions = Number((totalEnergyUsed / 3600000 * 77).toFixed(2));
     
-    energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;  // Changed to show total
-    energyBarItem.tooltip = `Last edit: ~${recentEnergyUsed.toFixed(2)} J`;  // Changed to show last edit
-    console.log(`Energy used for this suggestion: ~${energyUsed} J (Token count: ${tokenCount})`);
+    energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;
+    energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂ emissions: ~${totalCO2Emissions.toFixed(2)} g of CO₂`;
+    console.log(`Energy used for this suggestion: ~${recentEnergyUsed} J (Token count: ${tokenCount})`);
 
     if (insertedText.trim().length > 0) {
       const timestamp = new Date().toISOString();
@@ -134,7 +135,9 @@ function flushSuggestionBuffer(logFilePath: string, document?: vscode.TextDocume
         `File: ${fileName}\n` +
         `Suggestion:\n${insertedText}\n` +
         `Token Count: ${tokenCount}\n` +
-        `Energy Consumption: ${energyUsed} J\n` +
+        `Energy Consumption: ${recentEnergyUsed} J\n` +
+        `Total Energy Consumption: ${totalEnergyUsed} J\n` +
+        `Total CO₂ emissions: ${totalCO2Emissions} J\n` +
         '-'.repeat(40) + '\n'
       );
     }
