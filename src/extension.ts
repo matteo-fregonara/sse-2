@@ -121,7 +121,7 @@ function flushSuggestionBuffer(logFilePath: string, document?: vscode.TextDocume
   if (tokenCount >= MIN_TOKEN_THRESHOLD) {
     const recentEnergyUsed = Number((tokenCount * JOULES_PER_TOKEN).toFixed(2));
     totalEnergyUsed = Number((totalEnergyUsed + recentEnergyUsed).toFixed(2));
-    totalCO2Emissions = Number((totalEnergyUsed / 3600000 * 77).toFixed(2));
+    totalCO2Emissions = Number((totalEnergyUsed * 0.0000213889).toFixed(2));
     
     energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;
     energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂ emissions: ~${totalCO2Emissions.toFixed(2)} gCO₂`;
