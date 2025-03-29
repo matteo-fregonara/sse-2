@@ -31,7 +31,7 @@ function activate(context) {
     statusBarItem.show();
     energyBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
     energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;
-    energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂ emissions: ~${totalCO2Emissions.toFixed(3)} g of CO₂`;
+    energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂ emissions: ~${totalCO2Emissions.toFixed(2)} g of CO₂`;
     energyBarItem.show();
     context.subscriptions.push(statusBarItem);
     context.subscriptions.push(energyBarItem);
@@ -105,7 +105,7 @@ function flushSuggestionBuffer(logFilePath, document) {
     if (tokenCount >= MIN_TOKEN_THRESHOLD) {
         const recentEnergyUsed = Number((tokenCount * JOULES_PER_TOKEN).toFixed(2));
         totalEnergyUsed = Number((totalEnergyUsed + recentEnergyUsed).toFixed(2));
-        totalCO2Emissions = Number((totalEnergyUsed / 3600000 * 77).toFixed(3));
+        totalCO2Emissions = Number((totalEnergyUsed / 3600000 * 77).toFixed(2));
         energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;
         energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂ emissions: ~${totalCO2Emissions.toFixed(2)} g of CO₂`;
         console.log(`Energy used for this suggestion: ~${recentEnergyUsed} J (Token count: ${tokenCount})`);

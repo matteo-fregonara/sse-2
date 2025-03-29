@@ -34,7 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   energyBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
   energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;
-  energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂ emissions: ~${totalCO2Emissions.toFixed(2)} g of CO₂`;
+  energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂ emissions: ~${totalCO2Emissions.toFixed(2)} gCO₂`;
   energyBarItem.show();
 
   context.subscriptions.push(statusBarItem);
@@ -124,7 +124,7 @@ function flushSuggestionBuffer(logFilePath: string, document?: vscode.TextDocume
     totalCO2Emissions = Number((totalEnergyUsed / 3600000 * 77).toFixed(2));
     
     energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;
-    energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂ emissions: ~${totalCO2Emissions.toFixed(2)} g of CO₂`;
+    energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂ emissions: ~${totalCO2Emissions.toFixed(2)} gCO₂`;
     console.log(`Energy used for this suggestion: ~${recentEnergyUsed} J (Token count: ${tokenCount})`);
 
     if (insertedText.trim().length > 0) {
@@ -137,7 +137,7 @@ function flushSuggestionBuffer(logFilePath: string, document?: vscode.TextDocume
         `Token Count: ${tokenCount}\n` +
         `Energy Consumption: ${recentEnergyUsed} J\n` +
         `Total Energy Consumption: ${totalEnergyUsed} J\n` +
-        `Total CO₂ emissions: ${totalCO2Emissions} J\n` +
+        `Total CO₂ emissions: ${totalCO2Emissions} gCO₂\n` +
         '-'.repeat(40) + '\n'
       );
     }
