@@ -1,87 +1,63 @@
-# testlogger README
+# GitHub Copilot Energy Consumption Tracker
 
-## Overview
-
-The `Copilot Logger` extension logs GitHub Copilot suggestions to a text file for later review and analysis. This can be useful for tracking the AI's suggestions and understanding its behavior over time.
+A Visual Studio Code extension that tracks and logs the estimated energy consumption and CO₂ emissions of GitHub Copilot suggestions.
 
 ## Features
 
-- Automatically logs all Copilot suggestions to a specified file.
-- Configurable log file location.
-- Option to include timestamps with each logged suggestion.
+- Monitors text changes in VS Code to detect GitHub Copilot suggestions
+- Estimates energy consumption based on token count (2.16 Joules per token)
+- Calculates approximate CO₂ emissions (0.0000214 gCO₂ per Joule)
+- Displays real-time stats in the status bar:
+  - Total energy consumed
+  - Energy used for last edit
+  - Total CO₂ emissions
+- Logs detailed information to a file including:
+  - Timestamp of each suggestion
+  - File name
+  - Inserted text
+  - Token count
+  - Energy consumption metrics
+- Toggle logging on/off via status bar or command
+- Debounces suggestions with a 2-second delay to group related changes
 
-## Requirements
+## Installation
 
-- Visual Studio Code v1.60.0 or higher.
-- GitHub Copilot extension installed and configured.
+1. Clone this repository
+2. Run `npm install` to install dependencies
+3. Package the extension: `vsce package`
+4. Install the `.vsix` file in VS Code via "Install from VSIX" in the Extensions view
 
-## Extension Settings
+## Usage
 
-This extension contributes the following settings:
+1. The extension activates automatically when loaded in VS Code
+2. Make edits with GitHub Copilot active
+3. View real-time energy stats in the status bar (right side)
+4. Click the status bar item to toggle logging on/off
+5. Find detailed logs in the extension's global storage path
 
-* `copilotLogger.enable`: Enable/disable the Copilot Logger extension.
-* `copilotLogger.logFilePath`: Specify the path to the log file.
-* `copilotLogger.includeTimestamps`: Enable/disable timestamps in the log file.
+### Commands
 
-## Known Issues
+- `githubCopilotEnergy.toggle`: Toggle energy consumption logging
+- `githubCopilotEnergy.test`: Test writing to the log file
+- `githubCopilotEnergy.start`: Mark the start of energy tracking in the log
 
-- Large log files may impact performance.
-- Ensure the log file path is writable to avoid permission issues.
+## Configuration
 
-## Release Notes
+The extension uses these constants (defined in the code):
+- `MIN_TOKEN_THRESHOLD`: 3 tokens (minimum change to track)
+- `JOULES_PER_TOKEN`: 2.16 J (energy per token)
+- `suggestionDebounceTime`: 2000 ms (debounce delay)
 
-### 1.0.0
+## Log File Location
 
-Initial release of Copilot Logger.
+Logs are stored in the VS Code global storage path:
+- Windows: `%APPDATA%\Code\User\globalStorage\energy_consumption_log.txt`
+- Mac: `~/Library/Application Support/Code/User/globalStorage/energy_consumption_log.txt`
+- Linux: `~/.config/Code/User/globalStorage/energy_consumption_log.txt`
 
----
+## Technical Details
 
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
-
-## Contributing
-
-Contributions are welcome! If you have any suggestions, bug reports, or feature requests, please open an issue or submit a pull request on the [GitHub repository](https://github.com/yourusername/copilot-logger).
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Acknowledgements
-
-- Thanks to the GitHub Copilot team for creating such an amazing tool.
-- Special thanks to all contributors and users who have provided feedback and support.
-
-## Contact
-
-If you have any questions or need further assistance, feel free to reach out:
-
-- Email: yourname@example.com
-
-**Happy Coding!**
-```
-    ____            _ _       _     _                                 
-    / ___|___  _ __ (_) |_ ___| |__ (_)_ __   __ _   _ __ ___   ___  ___ 
-   | |   / _ \| '_ \| | __/ __| '_ \| | '_ \ / _` | | '_ ` _ \ / _ \/ __|
-   | |__| (_) | | | | | || (__| | | | | | | | (_| |_| | | | | |  __/\__ \
-    \____\___/|_| |_|_|\__\___|_| |_|_|_| |_|\__, (_) |_| |_| |_|\___||___/
-                                    |___/                         
-```
+- Uses the `tiktoken` library for token counting with GPT-4o encoding
+- Debounces text changes to group Copilot suggestions
+- Only tracks changes exceeding the minimum token threshold
+- Stores running totals for energy and CO₂ emissions
