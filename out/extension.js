@@ -31,7 +31,7 @@ function activate(context) {
     statusBarItem.show();
     energyBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
     energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;
-    energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂ emissions: ~${totalCO2Emissions.toFixed(2)} gCO₂`;
+    energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂eq emissions: ~${totalCO2Emissions.toFixed(2)} gCO₂eq`;
     energyBarItem.show();
     context.subscriptions.push(statusBarItem);
     context.subscriptions.push(energyBarItem);
@@ -105,9 +105,9 @@ function flushSuggestionBuffer(logFilePath, document) {
     if (tokenCount >= MIN_TOKEN_THRESHOLD) {
         const recentEnergyUsed = Number((tokenCount * JOULES_PER_TOKEN).toFixed(2));
         totalEnergyUsed = Number((totalEnergyUsed + recentEnergyUsed).toFixed(2));
-        totalCO2Emissions = Number((totalEnergyUsed * 0.0000213889).toFixed(2));
+        totalCO2Emissions = Number((totalEnergyUsed * 0.0000214).toFixed(2));
         energyBarItem.text = `Total Energy Consumed: ~${totalEnergyUsed.toFixed(2)} J`;
-        energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂ emissions: ~${totalCO2Emissions.toFixed(2)} gCO₂`;
+        energyBarItem.tooltip = `Last Edit: ~${recentEnergyUsed.toFixed(2)} J\nTotal CO₂eq emissions: ~${totalCO2Emissions.toFixed(2)} gCO₂eq`;
         console.log(`Energy used for this suggestion: ~${recentEnergyUsed} J (Token count: ${tokenCount})`);
         if (insertedText.trim().length > 0) {
             const timestamp = new Date().toISOString();
@@ -118,7 +118,7 @@ function flushSuggestionBuffer(logFilePath, document) {
                 `Token Count: ${tokenCount}\n` +
                 `Energy Consumption: ${recentEnergyUsed} J\n` +
                 `Total Energy Consumption: ${totalEnergyUsed} J\n` +
-                `Total CO₂ emissions: ${totalCO2Emissions} gCO₂\n` +
+                `Total CO₂eq emissions: ${totalCO2Emissions} gCO₂eq\n` +
                 '-'.repeat(40) + '\n');
         }
     }
